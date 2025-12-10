@@ -9,6 +9,7 @@ agent.py - 智慧交通號誌控制 Agent
    - env.control_intersection(position, action): 控制指定路口
      - position: (x, y) 座標，從 states 中取得
      - action: 可以是 'toggle' (切換), 'ns_green' (南北綠), 'ew_green' (東西綠), 或 'hold' (保持)
+   - env.get_vehicle_states(): 取得所有車輛資訊 (位置、目的地、類型等)
    - env.update_intersections(): 手動推進紅綠燈計時器 (必須呼叫，否則時間不會動)
    
 實作目標：
@@ -26,7 +27,12 @@ def step(env):
     """
     
     # 1. 觀察環境
-    # states = env.get_intersection_states()
+    # intersection_states = env.get_intersection_states()
+    # vehicle_states = env.get_vehicle_states()
+    
+    # print(f"Vehicles: {len(vehicle_states)}")
+    # for v in vehicle_states:
+    #     print(f"  - Pos: {v['position']} -> Dest: {v['destination']}")
     
     # 2. 實作您的控制邏輯 (範例：全部路口保持不變)
     # for state in states:
