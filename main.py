@@ -111,7 +111,8 @@ def run_grid_simulation(
         print("SIMULATION COMPLETE")
     print("=" * 60)
     print(f"Total steps: {step}")
-    print(f"Vehicles arrived: {info['arrived_count']} / {vehicle_count}")
+    total_spawned = info.get('total_spawned', vehicle_count)
+    print(f"Vehicles arrived: {info['arrived_count']} / {total_spawned}")
     print(f"Time elapsed: {elapsed:.2f} seconds")
     if step > 0:
         print(f"Average: {elapsed/step:.4f} seconds/step")
