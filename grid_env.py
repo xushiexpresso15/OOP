@@ -237,6 +237,7 @@ class GridTrafficEnv(gym.Env):
         self.vehicles = []
         self.current_step = 0
         self.arrived_count = 0
+        self.total_spawned_vehicles = 0
         
         # 生成初始車輛
         self._spawn_initial_vehicles()
@@ -366,6 +367,9 @@ class GridTrafficEnv(gym.Env):
             else:
                 # 路徑不存在，釋放起點
                 used_starts.discard(start)
+        
+        self.total_spawned_vehicles = spawned
+        print(f"Vehicles spawned: {spawned} (requested: {num_vehicles})")
     
     def _spawn_vehicles(self):
         """每步嘗試生成新車輛 (僅在非固定模式下)"""
@@ -378,6 +382,8 @@ class GridTrafficEnv(gym.Env):
         if random.random() < self.VEHICLE_SPAWN_PROB:
             boundary = self.grid_map.get_boundary_cells()
             self._spawn_single_vehicle(boundary)
+            if self._spawn_single_vehicle(boundary):
+                 self.total_spawned_vehicles += 1
     
     def _spawn_single_vehicle(self, boundary: List[Tuple[int, int]]):
         """生成單一車輛 (用於動態生成)"""
@@ -583,6 +589,9 @@ class GridTrafficEnv(gym.Env):
             "vehicle_count": len(self.vehicles),
             "arrived_count": self.arrived_count,
             "intersection_count": len(self.grid_map.intersections) if self.grid_map else 0,
+            "total_spawned": self.total_spawned_vehicles,
+            "total_throughput": self.arrived_count,
+            "ambulance_throughput": 0
         }
 
 
