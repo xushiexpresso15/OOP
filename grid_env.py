@@ -144,6 +144,32 @@ class GridTrafficEnv(gym.Env):
         """
         return [inter.get_state() for inter in self.get_intersections()]
     
+    def get_vehicle_states(self) -> list:
+        """
+        取得所有車輛狀態 (用於 Agent 觀察)
+        
+        Returns:
+            list: 每個車輛的狀態字典
+                {
+                    'position': (x, y),       # 當前網格位置
+                    'destination': (x, y),    # 目的地網格位置
+                    'direction': str,         # 行進方向 ('n', 's', 'e', 'w')
+                    'type': str,              # 'car' 或 'ambulance'
+                    'wait_time': int          # 已等待時間
+                }
+        """
+        states = []
+        for v in self.vehicles:
+            if v.grid_position:
+                states.append({
+                    'position': v.grid_position,
+                    'destination': v.destination,
+                    'direction': v.direction.value,  # Enum to value
+                    'type': 'ambulance' if isinstance(v, Ambulance) else 'car',
+                    'wait_time': v.wait_time
+                })
+        return states
+    
     def control_intersection(self, position: Tuple[int, int], action: str):
         """
         控制指定路口的紅綠燈 (Agent API)
