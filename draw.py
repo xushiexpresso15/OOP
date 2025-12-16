@@ -1,13 +1,3 @@
-"""
-draw.py - 視覺化模組 (迷宮網格版)
-Smart Traffic Intersection Environment
-
-改進的視覺化：
-- 真實的馬路外觀
-- 三燈號誌紅綠燈
-- 車輛圖形
-"""
-
 import pygame
 import numpy as np
 import math
@@ -18,31 +8,27 @@ from objects import Vehicle, Car, Ambulance, TrafficLight, LightState, Direction
 
 
 class GridRenderer:
-    """網格地圖渲染器"""
-    
     WINDOW_WIDTH = 800
     WINDOW_HEIGHT = 800
     
     ANIMATION_DURATION = 0.05
     ANIMATION_FRAMES = 3
     
-    # 顏色定義
     COLORS = {
-        # 背景和環境
-        "background": (34, 139, 34),       # 草地綠色
+        "background": (34, 139, 34),       # 背景綠色
         "wall": (34, 139, 34),             # 牆壁 = 草地
         "road": (50, 50, 50),              # 柏油路深灰色
         "road_line": (255, 255, 255),      # 白色道路線
         "road_edge": (80, 80, 80),         # 道路邊緣
         "intersection": (60, 60, 60),      # 路口
-        
-        # 車輛
+
+        #車子
         "car_body": (30, 100, 200),        # 藍色車身
         "car_window": (150, 200, 255),     # 淺藍色車窗
         "ambulance_body": (255, 50, 50),   # 紅色救護車
         "ambulance_cross": (255, 255, 255), # 白色十字
         
-        # 紅綠燈
+        #紅綠燈
         "light_box": (40, 40, 40),         # 燈箱
         "light_red": (255, 0, 0),
         "light_yellow": (255, 200, 0),
@@ -98,25 +84,17 @@ class GridRenderer:
         return self._render_frame(render_data)
     
     def _render_frame(self, render_data: Dict[str, Any]) -> Optional[np.ndarray]:
-        # 背景 (草地)
         self._screen.fill(self.COLORS["background"])
         
         grid_map = render_data.get("grid_map")
         
         if grid_map:
             cell_size = self._get_cell_size(grid_map)
-            
-            # 繪製道路
             self._draw_roads(grid_map, cell_size)
-            
-            # 繪製紅綠燈
             self._draw_traffic_lights(grid_map, cell_size)
-            
-            # 繪製車輛
             vehicles = render_data.get("vehicles", [])
             self._draw_vehicles(vehicles, cell_size)
         
-        # 資訊面板
         self._draw_info(render_data)
         
         if self.render_mode == "human":
@@ -143,12 +121,8 @@ class GridRenderer:
         py = y * cell_size + cell_size // 2
         return px, py
     
-    # =========================================================================
-    # 繪製道路
-    # =========================================================================
     
     def _draw_roads(self, grid_map, cell_size: int):
-        """繪製真實感馬路"""
         from grid_map import GridCell
         
         for y in range(grid_map.actual_height):
@@ -156,71 +130,47 @@ class GridRenderer:
                 cell = grid_map.grid[y][x]
                 
                 if cell == GridCell.EMPTY:
-                    continue  # 草地背景已經畫了
+                    continue
                 
-                # 道路區域
                 rect = pygame.Rect(
                     x * cell_size, y * cell_size,
                     cell_size, cell_size
                 )
                 
-                # 繪製柏油路
                 pygame.draw.rect(self._screen, self.COLORS["road"], rect)
-                
-                # 繪製道路邊緣
                 pygame.draw.rect(self._screen, self.COLORS["road_edge"], rect, 2)
-                
-                # 路口特殊處理
                 if cell == GridCell.INTERSECTION:
-                    # 路口中心標記
                     cx, cy = self._cell_to_pixel(x, y, cell_size)
                     pygame.draw.circle(self._screen, self.COLORS["road_line"], 
                                       (cx, cy), 3)
                 else:
-                    # 一般道路：繪製中線虛線
                     self._draw_road_markings(x, y, cell_size, grid_map)
     
     def _draw_road_markings(self, x: int, y: int, cell_size: int, grid_map):
-        """繪製道路標線"""
         from grid_map import GridCell
         
         cx, cy = self._cell_to_pixel(x, y, cell_size)
-        
-        # 檢查連接方向
         has_north = y > 0 and grid_map.grid[y-1][x] != GridCell.EMPTY
         has_south = y < grid_map.actual_height-1 and grid_map.grid[y+1][x] != GridCell.EMPTY
         has_west = x > 0 and grid_map.grid[y][x-1] != GridCell.EMPTY
         has_east = x < grid_map.actual_width-1 and grid_map.grid[y][x+1] != GridCell.EMPTY
         
         line_len = cell_size // 4
-        
-        # 垂直方向道路
         if has_north or has_south:
-            pygame.draw.line(self._screen, self.COLORS["road_line"],
-                           (cx, cy - line_len), (cx, cy + line_len), 1)
-        
-        # 水平方向道路
+            pygame.draw.line(self._screen, self.COLORS["road_line"], (cx, cy - line_len), (cx, cy + line_len), 1)
         if has_west or has_east:
-            pygame.draw.line(self._screen, self.COLORS["road_line"],
-                           (cx - line_len, cy), (cx + line_len, cy), 1)
-    
-    # =========================================================================
-    # 繪製紅綠燈 (三燈)
-    # =========================================================================
+            pygame.draw.line(self._screen, self.COLORS["road_line"], (cx - line_len, cy), (cx + line_len, cy), 1)
+            
     
     def _draw_traffic_lights(self, grid_map, cell_size: int):
-        """繪製三燈紅綠燈"""
         for (x, y), intersection in grid_map.intersections.items():
             px, py = self._cell_to_pixel(x, y, cell_size)
-            
-            # 南北向燈 (左側)
             self._draw_single_traffic_light(
                 px - cell_size // 3, py - cell_size // 4,
                 intersection.traffic_light_ns.state,
                 vertical=True
             )
             
-            # 東西向燈 (上方)
             self._draw_single_traffic_light(
                 px + cell_size // 4, py - cell_size // 3,
                 intersection.traffic_light_ew.state,
@@ -228,31 +178,21 @@ class GridRenderer:
             )
     
     def _draw_single_traffic_light(self, x: int, y: int, state: LightState, vertical: bool):
-        """
-        繪製單個三燈號誌
-        
-        垂直排列：紅-黃-綠
-        """
         r = self.LIGHT_RADIUS
         spacing = r * 2 + 4
         
         if vertical:
-            # 垂直排列的燈箱
             box_w, box_h = r * 2 + 6, spacing * 3 + 4
             box_x, box_y = x - box_w // 2, y - box_h // 2
-            pygame.draw.rect(self._screen, self.COLORS["light_box"],
-                           (box_x, box_y, box_w, box_h))
-            pygame.draw.rect(self._screen, (80, 80, 80),
-                           (box_x, box_y, box_w, box_h), 1)
+            pygame.draw.rect(self._screen, self.COLORS["light_box"], (box_x, box_y, box_w, box_h))
+            pygame.draw.rect(self._screen, (80, 80, 80), (box_x, box_y, box_w, box_h), 1)
             
-            # 三個燈
             lights_pos = [
-                (x, y - spacing),   # 紅燈
-                (x, y),             # 黃燈
-                (x, y + spacing),   # 綠燈
+                (x, y - spacing), #red
+                (x, y), #Yellow
+                (x, y + spacing), #green
             ]
         else:
-            # 水平排列的燈箱
             box_w, box_h = spacing * 3 + 4, r * 2 + 6
             box_x, box_y = x - box_w // 2, y - box_h // 2
             pygame.draw.rect(self._screen, self.COLORS["light_box"],
@@ -260,14 +200,12 @@ class GridRenderer:
             pygame.draw.rect(self._screen, (80, 80, 80),
                            (box_x, box_y, box_w, box_h), 1)
             
-            # 三個燈
             lights_pos = [
-                (x - spacing, y),   # 紅燈
-                (x, y),             # 黃燈
-                (x + spacing, y),   # 綠燈
+                (x - spacing, y), 
+                (x, y),
+                (x + spacing, y),
             ]
         
-        # 繪製燈號
         light_colors = [
             (self.COLORS["light_red"] if state == LightState.RED else self.COLORS["light_off"]),
             (self.COLORS["light_yellow"] if state == LightState.YELLOW else self.COLORS["light_off"]),
@@ -276,18 +214,12 @@ class GridRenderer:
         
         for pos, color in zip(lights_pos, light_colors):
             pygame.draw.circle(self._screen, color, pos, r)
-            # 發光效果
             if color != self.COLORS["light_off"]:
                 glow = pygame.Surface((r*4, r*4), pygame.SRCALPHA)
                 pygame.draw.circle(glow, (*color[:3], 80), (r*2, r*2), r*2)
                 self._screen.blit(glow, (pos[0] - r*2, pos[1] - r*2))
     
-    # =========================================================================
-    # 繪製車輛
-    # =========================================================================
-    
     def _draw_vehicles(self, vehicles: List[Vehicle], cell_size: int):
-        """繪製所有車輛 (含車道偏移)"""
         for vehicle in vehicles:
             if vehicle.grid_position is None:
                 continue
@@ -295,31 +227,27 @@ class GridRenderer:
             x, y = vehicle.grid_position
             px, py = self._cell_to_pixel(x, y, cell_size)
             
-            # 計算車道偏移 (4個方向各佔不同車道)
+            # 畫車道
             lane_offset = cell_size // 4
             move_dir = self._get_vehicle_direction(vehicle)
-            
-            # 根據行進方向偏移到對應車道
+            #靠右行駛
             if move_dir == "n":
-                px -= lane_offset  # 北向：偏左
+                px -= lane_offset
             elif move_dir == "s":
-                px += lane_offset  # 南向：偏右
+                px += lane_offset
             elif move_dir == "e":
-                py -= lane_offset  # 東向：偏上
+                py -= lane_offset
             elif move_dir == "w":
-                py += lane_offset  # 西向：偏下
+                py += lane_offset
             
-            # 繪製路徑
-            if vehicle.path and len(vehicle.path) > vehicle.path_index:
+            if vehicle.path and len(vehicle.path) > vehicle.path_index: # draw car route
                 self._draw_path(vehicle.path, vehicle.path_index, cell_size)
             
-            # 繪製車輛
             if isinstance(vehicle, Ambulance):
                 self._draw_ambulance(px, py, move_dir)
             else:
                 self._draw_car(px, py, move_dir)
             
-            # 目的地標記
             if vehicle.destination:
                 dx, dy = vehicle.destination
                 dpx, dpy = self._cell_to_pixel(dx, dy, cell_size)
@@ -327,10 +255,7 @@ class GridRenderer:
                                (dpx - 6, dpy - 6, 12, 12), 2)
     
     def _get_vehicle_direction(self, vehicle) -> str:
-        """取得車輛移動方向 (n/s/e/w)"""
-        # 如果有明確的方向屬性 (來自 GridTrafficEnv)，則優先使用
         if hasattr(vehicle, 'direction') and vehicle.direction:
-            # 將 Enum 轉換為字串
             d = vehicle.direction
             if hasattr(d, 'value'):
                 d = d.value
@@ -356,7 +281,6 @@ class GridRenderer:
         return "n"
     
     def _draw_rotated_surface(self, x: int, y: int, surface: pygame.Surface, direction: str):
-        """旋轉並繪製 Surface"""
         angle = 0
         if direction == "e":
             angle = -90
@@ -364,7 +288,6 @@ class GridRenderer:
             angle = 180
         elif direction == "w":
             angle = 90
-        # n is 0 (default facing up)
         
         if angle != 0:
             rotated_surface = pygame.transform.rotate(surface, angle)
@@ -375,65 +298,40 @@ class GridRenderer:
         self._screen.blit(rotated_surface, rect)
 
     def _draw_car(self, x: int, y: int, direction: str):
-        """繪製汽車 (支援旋轉)"""
-        # 建立一個暫存的 Surface，大小足夠容納旋轉後的車輛
         size = self.VEHICLE_SIZE
         surface = pygame.Surface((size, size), pygame.SRCALPHA)
         
-        # 在 Surface 中心繪製朝北的車
-        # 車身 (長方形，長邊在 Y 軸)
-        w, h = size - 8, size     # 變瘦一點，看起來像車
+        w, h = size - 8, size
         cx, cy = size // 2, size // 2
         
         body_rect = pygame.Rect(cx - w//2, cy - h//2, w, h)
         pygame.draw.rect(surface, self.COLORS["car_body"], body_rect, border_radius=4)
-        
-        # 車頂/擋風玻璃
         roof_rect = pygame.Rect(cx - w//2 + 2, cy - h//4, w - 4, h//2)
         pygame.draw.rect(surface, self.COLORS["car_window"], roof_rect, border_radius=2)
-        
-        # 車頭燈 (上方)
         pygame.draw.circle(surface, (255, 255, 200), (cx - w//2 + 3, cy - h//2 + 2), 2)
         pygame.draw.circle(surface, (255, 255, 200), (cx + w//2 - 3, cy - h//2 + 2), 2)
-        
-        # 車尾燈 (下方)
         pygame.draw.circle(surface, (200, 50, 50), (cx - w//2 + 3, cy + h//2 - 2), 2)
         pygame.draw.circle(surface, (200, 50, 50), (cx + w//2 - 3, cy + h//2 - 2), 2)
-        
-        # 繪製旋轉後的車
         self._draw_rotated_surface(x, y, surface, direction)
     
     def _draw_ambulance(self, x: int, y: int, direction: str):
-        """繪製救護車 (支援旋轉)"""
         size = self.VEHICLE_SIZE + 4
         surface = pygame.Surface((size, size), pygame.SRCALPHA)
         
         w, h = size - 6, size
         cx, cy = size // 2, size // 2
         
-        # 車身
         body_rect = pygame.Rect(cx - w//2, cy - h//2, w, h)
         pygame.draw.rect(surface, self.COLORS["ambulance_body"], body_rect, border_radius=4)
-        
-        # 車頂十字
         cross_size = 6
-        pygame.draw.line(surface, self.COLORS["ambulance_cross"],
-                        (cx - cross_size, cy), (cx + cross_size, cy), 3)
-        pygame.draw.line(surface, self.COLORS["ambulance_cross"],
-                        (cx, cy - cross_size), (cx, cy + cross_size), 3)
-        
-        # 警示燈 (中心偏上)
+        pygame.draw.line(surface, self.COLORS["ambulance_cross"], (cx - cross_size, cy), (cx + cross_size, cy), 3)
+        pygame.draw.line(surface, self.COLORS["ambulance_cross"], (cx, cy - cross_size), (cx, cy + cross_size), 3)
         pygame.draw.circle(surface, (255, 100, 100), (cx, cy - h//4), 3)
-        
-        # 車頭燈
         pygame.draw.circle(surface, (255, 255, 255), (cx - w//2 + 3, cy - h//2 + 2), 2)
         pygame.draw.circle(surface, (255, 255, 255), (cx + w//2 - 3, cy - h//2 + 2), 2)
-        
-        # 繪製旋轉後的車
         self._draw_rotated_surface(x, y, surface, direction)
     
     def _draw_path(self, path: List[Tuple[int, int]], current_index: int, cell_size: int):
-        """繪製車輛路徑"""
         if len(path) < 2:
             return
         
@@ -446,15 +344,9 @@ class GridRenderer:
             pygame.draw.line(self._screen, self.COLORS["path"],
                            (px1, py1), (px2, py2), 2)
     
-    # =========================================================================
-    # 資訊面板
-    # =========================================================================
-    
+    #UI
     def _draw_info(self, render_data: Dict[str, Any]):
-        """繪製資訊面板"""
         panel = pygame.Rect(5, 5, 140, 75)
-        
-        # 半透明背景
         s = pygame.Surface((140, 75), pygame.SRCALPHA)
         s.fill((0, 0, 0, 180))
         self._screen.blit(s, (5, 5))
@@ -474,19 +366,9 @@ class GridRenderer:
             surface = self._font.render(text, True, self.COLORS["text"])
             self._screen.blit(surface, (12, 12 + i * 20))
 
-
-# =============================================================================
-# 舊版相容
-# =============================================================================
-
 class Renderer(GridRenderer):
-    """相容舊版"""
     pass
 
-
-# =============================================================================
-# Module Test
-# =============================================================================
 
 if __name__ == "__main__":
     print("=== Testing Grid Renderer ===\n")
