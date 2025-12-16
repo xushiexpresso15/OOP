@@ -1,0 +1,19 @@
+git commit -m "更新程式碼"Traffic Control Performance Comparison
+======================================
+Map Size: Medium (11x11)
+Vehicles: 20
+Seed: 42
+
+Metric               | Baseline (Random) | Agent (Smart)   | Improvement
+---------------------------------------------------------------------------
+Time Elapsed (s)     | 11.98           | 5.16            | -56.9% (BETTER)
+Steps Taken          | 180.00          | 80.00           | -55.6% (BETTER)
+Vehicles Arrived     | 20.00           | 20.00           | 0.0% (SAME)
+---------------------------------------------------------------------------
+
+Implementation Logic:
+1. Baseline: Traffic lights cycle automatically on fixed/random timers.
+2. Agent: Monitors queue lengths at each intersection.
+   - Calculates green light duration: Min 5s + (3s * waiting_cars).
+   - Max limitation: 30s.
+   - Switches priority dynamically based on traffic demand.
