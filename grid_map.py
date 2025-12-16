@@ -1,13 +1,3 @@
-"""
-grid_map.py - 迷宮式網格地圖生成模組
-Smart Traffic Intersection Environment
-
-使用 Perlin noise 生成 5x5 迷宮式道路系統：
-- 迷宮的路線就是馬路
-- 保證所有道路連通
-- 路口有獨立紅綠燈
-"""
-
 from enum import Enum
 from typing import List, Tuple, Dict, Optional, Set
 import random
@@ -16,14 +6,7 @@ import math
 
 from objects import TrafficLight, LightState
 
-
-# =============================================================================
-# Perlin Noise Implementation
-# =============================================================================
-
 class PerlinNoise:
-    """簡化版 Perlin noise 實作"""
-    
     def __init__(self, seed: int = None):
         if seed is not None:
             random.seed(seed)
@@ -59,39 +42,17 @@ class PerlinNoise:
         x2 = self._lerp(self._grad(ab, xf, yf - 1), self._grad(bb, xf - 1, yf - 1), u)
         return self._lerp(x1, x2, v)
 
-
-# =============================================================================
-# Grid Cell Types
-# =============================================================================
-
 class GridCell(Enum):
-    """網格格子類型"""
-    EMPTY = 0           # 空地 (牆壁)
-    ROAD = 1            # 道路 (迷宮路徑)
-    INTERSECTION = 2    # 路口
-
-
-# =============================================================================
-# Intersection Class
-# =============================================================================
+    EMPTY = 0 #牆壁
+    ROAD = 1 #道路
+    INTERSECTION = 2 #路口
 
 class Intersection:
-    """
-    路口類別 - 每個路口有獨立紅綠燈
-    
-    提供 Agent 控制紅綠燈的 API：
-    - toggle(): 切換紅綠燈方向
-    - set_ns_green(): 強制設定南北向為綠燈
-    - set_ew_green(): 強制設定東西向為綠燈
-    - get_state(): 取得當前狀態
-    """
-    
     def __init__(self, x: int, y: int):
         self.x = x
         self.y = y
         self.id = f"intersection_{x}_{y}"
         
-        # 隨機決定初始狀態和時間，讓每個路口獨立
         if random.random() < 0.5:
             self.traffic_light_ns = TrafficLight(f"NS_{x}_{y}", LightState.GREEN)
             self.traffic_light_ew = TrafficLight(f"EW_{x}_{y}", LightState.RED)
@@ -99,7 +60,6 @@ class Intersection:
             self.traffic_light_ns = TrafficLight(f"NS_{x}_{y}", LightState.RED)
             self.traffic_light_ew = TrafficLight(f"EW_{x}_{y}", LightState.GREEN)
         
-        # 隨機化初始計時器，讓各路口不同步
         offset = random.randint(0, 20)
         self.traffic_light_ns._timer = max(1, self.traffic_light_ns._timer - offset)
         self.traffic_light_ew._timer = max(1, self.traffic_light_ew._timer - offset)
@@ -108,12 +68,8 @@ class Intersection:
     def position(self) -> Tuple[int, int]:
         return (self.x, self.y)
     
-    # =========================================================================
-    # 自動更新 (random 模式使用)
-    # =========================================================================
-    
-    def update(self):
-        """自動更新紅綠燈 (用於 random 模式)"""
+    def update(self): 
+        #random mode traffic light
         ns = self.traffic_light_ns
         ew = self.traffic_light_ew
         
@@ -137,17 +93,8 @@ class Intersection:
         else:
             ns.set_state(LightState.GREEN)
     
-    # =========================================================================
-    # Agent 控制 API
-    # =========================================================================
-    
     def toggle(self):
-        """
-        切換紅綠燈方向 (Agent 動作)
-        
-        如果當前 NS 是綠燈/黃燈，則切換到 EW 綠燈
-        如果當前 EW 是綠燈/黃燈，則切換到 NS 綠燈
-        """
+        #for agent mode
         ns = self.traffic_light_ns
         ew = self.traffic_light_ew
         
@@ -159,28 +106,22 @@ class Intersection:
             ns.set_state(LightState.GREEN)
     
     def set_ns_green(self):
-        """強制設定南北向為綠燈 (Agent 動作)"""
         self.traffic_light_ns.set_state(LightState.GREEN)
         self.traffic_light_ew.set_state(LightState.RED)
     
     def set_ew_green(self):
-        """強制設定東西向為綠燈 (Agent 動作)"""
         self.traffic_light_ns.set_state(LightState.RED)
         self.traffic_light_ew.set_state(LightState.GREEN)
     
+    def set_ns_yellow(self):
+        self.traffic_light_ns.set_state(LightState.YELLOW)
+        self.traffic_light_ew.set_state(LightState.RED)
+    
+    def set_ew_yellow(self):
+        self.traffic_light_ns.set_state(LightState.RED)
+        self.traffic_light_ew.set_state(LightState.YELLOW)
+    
     def get_state(self) -> dict:
-        """
-        取得當前路口狀態 (用於 Agent 觀察)
-        
-        Returns:
-            dict: {
-                'position': (x, y),
-                'ns_state': 'green'/'yellow'/'red',
-                'ew_state': 'green'/'yellow'/'red',
-                'ns_timer': int,
-                'ew_timer': int,
-            }
-        """
         return {
             'position': self.position,
             'ns_state': self.traffic_light_ns.state.value,
@@ -197,19 +138,7 @@ class Intersection:
         else:
             return self.traffic_light_ew.can_pass
 
-
-# =============================================================================
-# Grid Map Class - 迷宮式生成
-# =============================================================================
-
 class GridMap:
-    """
-    5x5 迷宮式網格地圖
-    
-    使用隨機深度優先搜尋 (DFS) 生成迷宮
-    迷宮的路徑即為道路
-    """
-    
     DEFAULT_SIZE = 5
     
     def __init__(self, width: int = DEFAULT_SIZE, height: int = DEFAULT_SIZE, seed: int = None):
@@ -217,62 +146,47 @@ class GridMap:
         self.height = height
         self.seed = seed
         
-        # 實際網格大小是 2*size+1 (牆壁 + 通道)
         self.actual_width = width * 2 + 1
         self.actual_height = height * 2 + 1
         
-        # 網格陣列
         self.grid: List[List[GridCell]] = [
             [GridCell.EMPTY for _ in range(self.actual_width)] 
             for _ in range(self.actual_height)
         ]
         
         self.intersections: Dict[Tuple[int, int], Intersection] = {}
-        
-        # 生成迷宮
         self._generate_maze(seed)
     
     def _generate_maze(self, seed: int = None):
-        """
-        使用 DFS + Perlin noise 生成迷宮
-        """
         if seed is not None:
             random.seed(seed)
         
-        noise = PerlinNoise(seed=seed)
-        
-        # 迷宮的邏輯格子座標 (不含牆壁)
+        noise = PerlinNoise(seed=seed) #noise物件
         visited = set()
         stack = [(0, 0)]
         visited.add((0, 0))
-        
-        # 設定起點為道路
         self.grid[1][1] = GridCell.ROAD
         
         while stack:
             cx, cy = stack[-1]
-            
-            # 取得未訪問的鄰居
             neighbors = []
             for dx, dy in [(0, 1), (0, -1), (1, 0), (-1, 0)]:
                 nx, ny = cx + dx, cy + dy
                 if 0 <= nx < self.width and 0 <= ny < self.height:
                     if (nx, ny) not in visited:
-                        # 使用 noise 決定優先順序
+                        #使用 noise 決定優先順序
                         noise_val = noise.noise(nx * 0.5, ny * 0.5)
                         neighbors.append((noise_val, nx, ny, dx, dy))
             
             if neighbors:
-                # 根據 noise 排序，選擇優先方向
+                #根據 noise 排序選下一步要往哪裡走
                 neighbors.sort(reverse=True)
                 _, nx, ny, dx, dy = neighbors[0]
                 
-                # 打通牆壁
-                wall_x = 1 + cx * 2 + dx
+                wall_x = 1 + cx * 2 + dx #break the walls!!!
                 wall_y = 1 + cy * 2 + dy
                 self.grid[wall_y][wall_x] = GridCell.ROAD
                 
-                # 設定新格子為道路
                 cell_x = 1 + nx * 2
                 cell_y = 1 + ny * 2
                 self.grid[cell_y][cell_x] = GridCell.ROAD
@@ -282,21 +196,15 @@ class GridMap:
             else:
                 stack.pop()
         
-        # 添加額外的路徑讓迷宮更開放
         self._add_extra_paths(noise)
-        
-        # 確保邊界有出入口
         self._add_boundary_exits()
-        
-        # 識別路口
         self._identify_intersections()
     
     def _add_extra_paths(self, noise: PerlinNoise):
-        """添加額外路徑讓迷宮不那麼單調"""
         for y in range(1, self.actual_height - 1, 2):
             for x in range(1, self.actual_width - 1, 2):
                 if self.grid[y][x] == GridCell.ROAD:
-                    # 隨機打通一些牆壁
+                    # 隨機break the walls
                     for dx, dy in [(1, 0), (0, 1)]:
                         wx, wy = x + dx, y + dy
                         if wx < self.actual_width - 1 and wy < self.actual_height - 1:
@@ -306,29 +214,23 @@ class GridMap:
                                     self.grid[wy][wx] = GridCell.ROAD
     
     def _add_boundary_exits(self):
-        """確保邊界有多個出入口"""
-        # 上邊界 - 所有連接到道路的點
         for x in range(1, self.actual_width - 1, 2):
             if self.grid[1][x] == GridCell.ROAD:
                 self.grid[0][x] = GridCell.ROAD
         
-        # 下邊界
         for x in range(1, self.actual_width - 1, 2):
             if self.grid[self.actual_height - 2][x] == GridCell.ROAD:
                 self.grid[self.actual_height - 1][x] = GridCell.ROAD
         
-        # 左邊界
         for y in range(1, self.actual_height - 1, 2):
             if self.grid[y][1] == GridCell.ROAD:
                 self.grid[y][0] = GridCell.ROAD
         
-        # 右邊界
         for y in range(1, self.actual_height - 1, 2):
             if self.grid[y][self.actual_width - 2] == GridCell.ROAD:
                 self.grid[y][self.actual_width - 1] = GridCell.ROAD
     
     def _identify_intersections(self):
-        """識別路口 (3個以上方向連接的道路格子)"""
         self.intersections.clear()
         
         for y in range(self.actual_height):
@@ -348,7 +250,6 @@ class GridMap:
                     self.intersections[(x, y)] = Intersection(x, y)
     
     def get_neighbors(self, x: int, y: int) -> List[Tuple[int, int]]:
-        """取得可通行的鄰居"""
         neighbors = []
         for dx, dy in [(0, 1), (0, -1), (1, 0), (-1, 0)]:
             nx, ny = x + dx, y + dy
@@ -358,17 +259,14 @@ class GridMap:
         return neighbors
     
     def get_boundary_cells(self) -> List[Tuple[int, int]]:
-        """取得邊界上的道路 (出入口)"""
         boundary = []
         
-        # 上下邊界
         for x in range(self.actual_width):
             if self.grid[0][x] != GridCell.EMPTY:
                 boundary.append((x, 0))
             if self.grid[self.actual_height - 1][x] != GridCell.EMPTY:
                 boundary.append((x, self.actual_height - 1))
         
-        # 左右邊界
         for y in range(1, self.actual_height - 1):
             if self.grid[y][0] != GridCell.EMPTY:
                 boundary.append((0, y))
@@ -378,12 +276,11 @@ class GridMap:
         return boundary
     
     def update_all_intersections(self):
-        """更新所有路口紅綠燈"""
         for intersection in self.intersections.values():
             intersection.update()
     
     def dijkstra(self, start: Tuple[int, int], end: Tuple[int, int]) -> Optional[List[Tuple[int, int]]]:
-        """Dijkstra 最短路徑"""
+        #用dijkstra演算法事先計算每台車子的最佳路徑
         if self.grid[start[1]][start[0]] == GridCell.EMPTY:
             return None
         if self.grid[end[1]][end[0]] == GridCell.EMPTY:
@@ -416,11 +313,7 @@ class GridMap:
             lines.append(line)
         return '\n'.join(lines)
 
-
-# =============================================================================
-# Module Test
-# =============================================================================
-
+# for test
 if __name__ == "__main__":
     print("=== Testing Maze Grid Map ===\n")
     
@@ -431,7 +324,6 @@ if __name__ == "__main__":
     print(f"\nIntersections: {len(grid.intersections)}")
     print(f"Boundary exits: {len(grid.get_boundary_cells())}")
     
-    # 測試路徑
     boundary = grid.get_boundary_cells()
     if len(boundary) >= 2:
         path = grid.dijkstra(boundary[0], boundary[-1])
