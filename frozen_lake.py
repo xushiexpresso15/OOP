@@ -30,12 +30,12 @@ def run(episodes, is_training=True, render=False):
             
     # Optimized parameters with penalty system
     learning_rate_a = 0.88
-    discount_factor_g = 0.945
+    discount_factor_g = 0.95
     epsilon = 1
     epsilon_decay_rate = 0.00008
     rng = np.random.default_rng()
     step_penalty = -0.002
-    hole_penalty = -2
+    hole_penalty = -2.2
 
     rewards_per_episode = np.zeros(episodes)
     
@@ -47,6 +47,9 @@ def run(episodes, is_training=True, render=False):
         
         if found_goal and is_training:
             times_of_findgoal += 1
+            if times_of_findgoal == 1:
+                epsilon /= 2
+                learning_rate_a /= 2 
             if times_of_findgoal == 2:
                 epsilon = 0.0
                 learning_rate_a = 0.01 
@@ -116,5 +119,5 @@ def run(episodes, is_training=True, render=False):
 
 
 if __name__ == '__main__':
-    run(15000, is_training=True, render=False)  
-    #run(1000, is_training=False, render=False)
+    #run(15000, is_training=True, render=False)  
+    run(1000, is_training=False, render=False)
